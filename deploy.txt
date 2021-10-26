@@ -1,0 +1,7 @@
+Deploying workspace: https://api.devnet.solana.com
+Upgrade authority: /root/.config/solana/devnet-lightcycle.json
+Deploying program "token-sale"...
+Program path: /root/workspace/tutions/token-sale/target/deploy/token_sale.so...
+Program Id: 6RzSkuS8SBaBMpvxtPvGcNS6GoFj3oEH7pDMTXzB3N7d
+
+Deploy success
