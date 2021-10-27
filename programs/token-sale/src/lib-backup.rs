@@ -10,20 +10,20 @@ pub mod token_sale {
     use super::*;
     #[state]
     pub struct MyProgram { 
-        beneficiary:Pubkey, 
+        pub beneficiary:Pubkey, 
     }
 
     impl MyProgram {
-        pub fn initialize_my_work(ctx: Context<Initialize>, _mint_bump: u8, _mint_authority_bump: u8) -> Result<Self, ProgramError> {
+        pub fn initialize(&mut self, ctx: Context<Initialize>, _mint_bump: u8, _mint_authority_bump: u8) -> ProgramResult {
             msg!("We just initialized a mint!");
             
-            Ok(Self{
+            Self{
                 beneficiary: *ctx.accounts.wallet.key,
-            })
-            // Ok(())
+            };
+            Ok(())
         }
 
-        pub fn mint_some_tokens(&mut self, ctx: Context<MintSomeTokens>, _mint_bump: u8, mint_authority_bump: u8) -> Result<(), ProgramError> {
+        pub fn mint_some_tokens(&mut self, ctx: Context<MintSomeTokens>, _mint_bump: u8, mint_authority_bump: u8) -> ProgramResult {
             msg!("Total supply = {}", ctx.accounts.mint.supply);
             let ts = ctx.accounts.mint.supply;
             let  tokenAmount;

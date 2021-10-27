@@ -21,7 +21,10 @@ describe('token-sale', () => {
     console.log(mint.toString())
     console.log((await program.provider.connection.getAccountInfo(mintAuthority)));
 
-    const tx = await program.rpc.initialize(mintBump, mintAuthorityBump, {
+    console.log('state', program.state)
+
+    console.log(program)
+    const tx = await program.state.rpc.initialize(mintBump, mintAuthorityBump, {
       accounts: {
         //mint: mint.publicKey,
         mint: mint,
@@ -48,7 +51,7 @@ describe('token-sale', () => {
 
  //   }
 
-    await program.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
+    await program.state.mintSomeTokens(mintBump, mintAuthorityBump, {
       accounts: {
         mint: mint,
         wallet: program.provider.wallet.publicKey,
