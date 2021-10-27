@@ -1,55 +1,61 @@
 use anchor_lang::{prelude::*, solana_program::system_program};
-use anchor_spl::token::{Token, TokenAccount, Mint};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod token_sale {
 
-
     use super::*;
     #[state]
-    pub struct MyProgram { 
-        beneficiary:Pubkey, 
+    pub struct MyProgram {
+        beneficiary: Pubkey,
     }
 
     impl MyProgram {
-        pub fn initialize_my_work(ctx: Context<Initialize>, _mint_bump: u8, _mint_authority_bump: u8) -> Result<Self, ProgramError> {
+        pub fn new(ctx: Context<Initialize>) -> Result<Self, ProgramError> {
             msg!("We just initialized a mint!");
-            
-            Ok(Self{
+
+            Ok(Self {
                 beneficiary: *ctx.accounts.wallet.key,
             })
             // Ok(())
         }
 
-        pub fn mint_some_tokens(&mut self, ctx: Context<MintSomeTokens>, _mint_bump: u8, mint_authority_bump: u8) -> Result<(), ProgramError> {
+        pub fn mint_some_tokens(
+            &mut self,
+            ctx: Context<MintSomeTokens>,
+            _mint_bump: u8,
+            mint_authority_bump: u8,
+        ) -> Result<(), ProgramError> {
             msg!("Total supply = {}", ctx.accounts.mint.supply);
             let ts = ctx.accounts.mint.supply;
-            let  tokenAmount;
+            let tokenAmount;
             if ts >= 12 {
                 return Err(ProgramError::Custom(1));
             }
 
-            if ts >=0 && ts < 5 {
+            if ts >= 0 && ts < 5 {
                 tokenAmount = 0500000000;
             } else if ts >= 5 && ts <= 10 {
                 tokenAmount = 1000000000;
-            }
-            else {
+            } else {
                 tokenAmount = 1500000000;
             }
-        
+
             let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
                 ctx.accounts.wallet.key,
                 &self.beneficiary,
-                tokenAmount
+                tokenAmount,
             );
-            anchor_lang::solana_program::program::invoke(&transfer_ix, &[
-                ctx.accounts.wallet.to_account_info(),
-                ctx.accounts.mint_authority.to_account_info(),
-            ])?;    
-        
+            anchor_lang::solana_program::program::invoke(
+                &transfer_ix,
+                &[
+                    ctx.accounts.wallet.to_account_info(),
+                    ctx.accounts.mint_authority.to_account_info(),
+                ],
+            )?;
+
             // if ts > 5 && ts <= 10 {
             //     let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
             //         ctx.accounts.wallet.key,
@@ -59,19 +65,21 @@ pub mod token_sale {
             //     anchor_lang::solana_program::program::invoke(&transfer_ix, &[
             //         ctx.accounts.wallet.to_account_info(),
             //         ctx.accounts.mint_authority.to_account_info(),
-            //     ])?;    
+            //     ])?;
             // }
 
-
-            anchor_spl::token::mint_to(CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                anchor_spl::token::MintTo {
-                    mint: ctx.accounts.mint.to_account_info(),
-                    to: ctx.accounts.token_destination.to_account_info(),
-                    authority: ctx.accounts.mint_authority.to_account_info()
-                },
-                &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]]
-            ), 1)?;
+            anchor_spl::token::mint_to(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    anchor_spl::token::MintTo {
+                        mint: ctx.accounts.mint.to_account_info(),
+                        to: ctx.accounts.token_destination.to_account_info(),
+                        authority: ctx.accounts.mint_authority.to_account_info(),
+                    },
+                    &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]],
+                ),
+                1,
+            )?;
 
             ctx.accounts.mint.reload()?;
             msg!("Total supply = {}", ctx.accounts.mint.supply);
@@ -95,7 +103,7 @@ pub struct Initialize<'info> {
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-    pub rent: Sysvar<'info, Rent>
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -114,5 +122,5 @@ pub struct MintSomeTokens<'info> {
     pub mint_authority: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
