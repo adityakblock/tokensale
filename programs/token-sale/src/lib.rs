@@ -1,5 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::system_program};
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{Mint, Token, TokenAccount},
+};
+
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -13,14 +17,32 @@ pub mod token_sale {
     }
 
     impl MyProgram {
-        pub fn new(ctx: Context<Initialize>, _mint_bump: u8, _mint_authority_bump: u8) -> Result<Self, ProgramError> {
+        pub fn new(ctx: Context<Initialize>, _mint_bump: u8, mint_authority_bump: u8) -> Result<Self, ProgramError> {
             msg!("We just initialized a mint!");
+
+            anchor_spl::token::mint_to(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    anchor_spl::token::MintTo {
+                        mint: ctx.accounts.mint.to_account_info(),
+                        to: ctx.accounts.destination.to_account_info(),
+                        authority: ctx.accounts.mint_authority.to_account_info(),
+                    },
+                    &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]],
+                ),
+                1,
+            )?;
 
             Ok(Self {
                 beneficiary: *ctx.accounts.wallet.key,
             })
             // Ok(())
         }
+
+
+
+
+
 
         pub fn mint_some_tokens(
             &mut self,
@@ -56,17 +78,6 @@ pub mod token_sale {
                 ],
             )?;
 
-            // if ts > 5 && ts <= 10 {
-            //     let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-            //         ctx.accounts.wallet.key,
-            //         ctx.accounts.mint_authority.key,
-            //         1000000000
-            //     );
-            //     anchor_lang::solana_program::program::invoke(&transfer_ix, &[
-            //         ctx.accounts.wallet.to_account_info(),
-            //         ctx.accounts.mint_authority.to_account_info(),
-            //     ])?;
-            // }
 
             anchor_spl::token::mint_to(
                 CpiContext::new_with_signer(
@@ -101,8 +112,12 @@ pub struct Initialize<'info> {
     #[account(seeds = [b"mint-authority".as_ref()], bump = mint_authority_bump)]
     pub mint_authority: AccountInfo<'info>,
 
+    #[account(init_if_needed, payer = wallet, associated_token::mint = mint, associated_token::authority = wallet)]
+    pub destination: Account<'info, TokenAccount>,
+
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
 }
 

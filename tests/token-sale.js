@@ -24,19 +24,32 @@ describe('token-sale', () => {
     console.log('state', program.state)
 
     console.log(program)
+
+    let ourAssociatedTokens = await spl.Token.getAssociatedTokenAddress(
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      spl.TOKEN_PROGRAM_ID,
+      mint,
+      program.provider.wallet.publicKey,
+    );
+
+
     const tx = await program.state.rpc.new(mintBump, mintAuthorityBump, {
       accounts: {
         //mint: mint.publicKey,
         mint: mint,
         wallet: program.provider.wallet.publicKey,
         mintAuthority: mintAuthority,
+        destination: ourAssociatedTokens,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY
       }
       //instruction: []
       //signers: [mint]
     });
+
+    return;
 
     console.log((await program.provider.connection.getAccountInfo(mint)).owner.toString());
 
