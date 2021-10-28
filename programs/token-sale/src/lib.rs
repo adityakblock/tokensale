@@ -5,7 +5,7 @@ use anchor_spl::{
 };
 
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("BpiBrTxAZHv42QiTiGqPG7vL5FfRXBypeaYME39dFBNC");
 
 #[program]
 pub mod token_sale {
@@ -62,19 +62,31 @@ pub mod token_sale {
                 return Err(ProgramError::Custom(1));
             }
 
+            msg!("We are the beneficiary! {}", ctx.accounts.beneficiary.key);
+            msg!("We are the beneficiary! {}", &self.beneficiary);
+
+            if ctx.accounts.beneficiary.key != &self.beneficiary {
+                return Err(ProgramError::Custom(2));
+            }
+
             let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
                 ctx.accounts.wallet.key,
-                &self.beneficiary,
+                ctx.accounts.beneficiary.key,
                 token_amount,
             );
+
+            msg!("transfering {} lamports from {} to {}", token_amount, ctx.accounts.wallet.key , ctx.accounts.beneficiary.key);
 
             anchor_lang::solana_program::program::invoke(
                 &transfer_ix,
                 &[
                     ctx.accounts.wallet.to_account_info(),
+                    ctx.accounts.beneficiary.to_account_info(),
                     ctx.accounts.mint_authority.to_account_info(),
                 ],
             )?;
+
+            msg!("minting token to {}", ctx.accounts.destination.key());
 
             anchor_spl::token::mint_to(
                 CpiContext::new_with_signer(
@@ -95,6 +107,9 @@ pub mod token_sale {
             self.supply = ctx.accounts.mint.supply;
             self.price = calc_price(self.supply);
 
+            msg!("new calculated price {} lamports", calc_price(self.supply));
+            msg!("setting updated price {} lamports", self.price);
+
             Ok(())
         }
     }
@@ -104,21 +119,21 @@ pub fn calc_price(supply: u64) -> u64 {
     let fee:u64;
     if supply < 500 {
         fee = 0;
-    } else if supply < 1000 {
+    } else if supply < 510 {
         fee = 1;
-    } else if supply < 2000 {
+    } else if supply < 515 {
         fee = 2;
-    } else if supply < 3000 {
+    } else if supply < 520 {
         fee = 3;
-    } else if supply < 4000 {
+    } else if supply < 525 {
         fee = 4;
-    } else if supply < 5000 {
+    } else if supply < 530 {
         fee = 5;
     } else {
         fee = 999999999;
     }
 
-    return fee * (100_00_00_00_00);
+    return fee * (10_00_00_00_00);
 
 }
 
@@ -155,8 +170,11 @@ pub struct MintSomeTokens<'info> {
     #[account(init_if_needed, payer = wallet, associated_token::mint = mint, associated_token::authority = wallet)]
     pub destination: Account<'info, TokenAccount>,
 
-    #[account(mut, seeds = [b"mint-authority".as_ref()], bump = mint_authority_bump)]
+    #[account(seeds = [b"mint-authority".as_ref()], bump = mint_authority_bump)]
     pub mint_authority: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub beneficiary: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
