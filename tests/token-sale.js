@@ -49,7 +49,7 @@ describe('token-sale', () => {
       //signers: [mint]
     });
 
-    return;
+    // return;
 
     console.log((await program.provider.connection.getAccountInfo(mint)).owner.toString());
 
@@ -64,26 +64,22 @@ describe('token-sale', () => {
 
  //   }
 
-    await program.state.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
+    let tx0 = await program.state.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
       accounts: {
         mint: mint,
         wallet: program.provider.wallet.publicKey,
-        tokenDestination: usersAssociatedTokenAccount,
+        destination: usersAssociatedTokenAccount,
         mintAuthority: mintAuthority,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
-      instructions: [
-        spl.Token.createAssociatedTokenAccountInstruction(
-          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-          spl.TOKEN_PROGRAM_ID,
-          mint,
-          usersAssociatedTokenAccount,
-          program.provider.wallet.publicKey,
-          program.provider.wallet.publicKey
-        )
-      ]
     })
+
+    while ((await program.provider.connection.getSignatureStatus(tx0)).value.confirmations === 0) {
+      // console.log('sign status', await program.provider.connection.getSignatureStatus(tx1));
+    }
 
     console.log((await program.provider.connection.getAccountInfo(mint)));
     console.log((await program.provider.connection.getAccountInfo(usersAssociatedTokenAccount)));
@@ -95,26 +91,32 @@ describe('token-sale', () => {
         accounts: {
           mint: mint,
           wallet: program.provider.wallet.publicKey,
-          tokenDestination: usersAssociatedTokenAccount,
+          destination: usersAssociatedTokenAccount,
           mintAuthority: mintAuthority,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         }
       })
 
-      const dank = await program.provider.connection.onSignature(tx1, (result, context) => {
-        console.log('result',result, context);
-      })
+      // const dank = await program.provider.connection.onSignature(tx1, (result, context) => {
+      //   console.log('result',result, context);
+      // })
 
-      console.log('dank', dank);
+      // console.log('dank', dank);
 
-      console.log('current transaction',tx1);
+      // console.log('current transaction',tx1);
 
       while ((await program.provider.connection.getSignatureStatus(tx1)).value.confirmations === 0) {
-        console.log('sign status', await program.provider.connection.getSignatureStatus(tx1));
+        // console.log('sign status', await program.provider.connection.getSignatureStatus(tx1));
       }
 
-      console.log((await program.provider.connection.getAccountInfo(mintAuthority)));
+      let con = await program.state.fetch();
+
+      debugger;
+
+      // console.log((await program.provider.connection.getAccountInfo(mintAuthority)));
     }
   });
 });
