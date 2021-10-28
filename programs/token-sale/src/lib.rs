@@ -13,7 +13,7 @@ pub mod token_sale {
     }
 
     impl MyProgram {
-        pub fn new(ctx: Context<Initialize>) -> Result<Self, ProgramError> {
+        pub fn new(ctx: Context<Initialize>, _mint_bump: u8, _mint_authority_bump: u8) -> Result<Self, ProgramError> {
             msg!("We just initialized a mint!");
 
             Ok(Self {

@@ -24,7 +24,7 @@ describe('token-sale', () => {
     console.log('state', program.state)
 
     console.log(program)
-    const tx = await program.state.rpc.initialize(mintBump, mintAuthorityBump, {
+    const tx = await program.state.rpc.new(mintBump, mintAuthorityBump, {
       accounts: {
         //mint: mint.publicKey,
         mint: mint,
@@ -51,7 +51,7 @@ describe('token-sale', () => {
 
  //   }
 
-    await program.state.mintSomeTokens(mintBump, mintAuthorityBump, {
+    await program.state.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
       accounts: {
         mint: mint,
         wallet: program.provider.wallet.publicKey,
@@ -78,7 +78,7 @@ describe('token-sale', () => {
     console.log((await program.provider.connection.getAccountInfo(mintAuthority)));
 
     for (let i= 0 ; i<12; i++){
-      let tx1 = await program.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
+      let tx1 = await program.state.rpc.mintSomeTokens(mintBump, mintAuthorityBump, {
         accounts: {
           mint: mint,
           wallet: program.provider.wallet.publicKey,
