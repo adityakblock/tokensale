@@ -4,8 +4,16 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 
+use anchor_lang::solana_program;
+use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::solana_program::entrypoint::ProgramResult;
+use anchor_lang::solana_program::program_error::ProgramError;
+use anchor_lang::solana_program::program_pack::Pack;
+use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::{Accounts, CpiContext};
 
-declare_id!("BpiBrTxAZHv42QiTiGqPG7vL5FfRXBypeaYME39dFBNC");
+
+declare_id!("FbPURn5SWk6PiBWgdFApT5oNkgZUyN6aeiEtPw43r8Jn");
 
 #[program]
 pub mod token_sale {
@@ -16,6 +24,7 @@ pub mod token_sale {
         beneficiary: Pubkey,
         supply: u64,
         price: u64,
+        lost_authority: bool,
     }
 
     impl MyProgram {
@@ -36,17 +45,65 @@ pub mod token_sale {
                 ),
                 initialSupply,
             )?;
+           
+            anchor_spl::token::set_authority(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    anchor_spl::token::SetAuthority {
+                    current_authority: ctx.accounts.mint_authority.to_account_info(),
+                    account_or_mint: ctx.accounts.mint.to_account_info(),
+                },
+                &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]],
+                ), 
+               // spl_token::instruction::Authority::MintTokens,
+               
+               spl_token::instruction::AuthorityType::MintTokens,
+               Some(*ctx.accounts.wallet.key),
+            )?;
 
+    
+            
+        
             Ok(Self {
                 beneficiary: *ctx.accounts.wallet.key,
                 supply: initialSupply,
-                price: calc_price(initialSupply)
+                price: calc_price(initialSupply),
+                lost_authority: true
             })
         }
 
 
 
+        pub fn change_authority(&mut self,
+            ctx: Context<ChangeAuthority>,) -> Result<(), ProgramError> {
 
+                if ctx.accounts.wallet.key != &self.beneficiary {
+                    return Err(ProgramError::Custom(2));
+                }
+
+                if !self.lost_authority {
+                    return Err(ProgramError::Custom(2));
+                }
+
+                // anchor_spl::token::set_authority(
+                //     CpiContext::new_with_signer(
+                //         ctx.accounts.token_program.to_account_info(),
+                //         anchor_spl::token::SetAuthority {
+                //         current_authority: ctx.accounts.wallet.to_account_info(),
+                //         account_or_mint: ctx.accounts.mint.to_account_info(),
+                //     },
+                //     &[&[&[], &[]]],
+                //     ), 
+                //    // spl_token::instruction::Authority::MintTokens,
+                   
+                //    spl_token::instruction::AuthorityType::MintTokens,
+                //    Some(*ctx.accounts.mint_authority.key),
+                // )?;
+
+                self.lost_authority = false;
+                
+                Ok(())
+            } 
 
 
         pub fn mint_some_tokens(
@@ -180,4 +237,12 @@ pub struct MintSomeTokens<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct ChangeAuthority<'info> {
+
+
+    #[account(mut)]
+    pub wallet: Signer<'info>,
 }
