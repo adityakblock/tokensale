@@ -1,3 +1,4 @@
+
 use anchor_lang::{prelude::*, solana_program::system_program};
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -23,7 +24,7 @@ pub mod token_sale {
     pub struct MyProgram {
         beneficiary: Pubkey,
         supply: u64,
-        price: u64,
+        price: f64,
         lost_authority: bool,
     }
 
@@ -46,7 +47,36 @@ pub mod token_sale {
                 initialSupply,
             )?;
            
-            anchor_spl::token::set_authority(
+            // anchor_spl::token::set_authority(
+            //     CpiContext::new_with_signer(
+            //         ctx.accounts.token_program.to_account_info(),
+            //         anchor_spl::token::SetAuthority {
+            //         current_authority: ctx.accounts.mint_authority.to_account_info(),
+            //         account_or_mint: ctx.accounts.mint.to_account_info(),
+            //     },
+            //     &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]],
+            //     ), 
+            //    // spl_token::instruction::Authority::MintTokens,
+               
+            //    spl_token::instruction::AuthorityType::MintTokens,
+            //    Some(*ctx.accounts.wallet.key),
+            // )?;
+
+    
+            
+        
+            Ok(Self {
+                beneficiary: *ctx.accounts.beneficiary.key,
+                supply: initialSupply,
+                price: calc_price(initialSupply),
+                lost_authority: true
+            })
+        }
+
+        pub fn change_authority_to_deployer(&mut self,
+            ctx: Context<ChangeAuthorityToDeployer>, _mint_bump: u8, mint_authority_bump: u8) -> Result<(), ProgramError> {
+                
+                anchor_spl::token::set_authority(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
                     anchor_spl::token::SetAuthority {
@@ -60,22 +90,13 @@ pub mod token_sale {
                spl_token::instruction::AuthorityType::MintTokens,
                Some(*ctx.accounts.wallet.key),
             )?;
-
-    
+                
+                Ok(())
             
-        
-            Ok(Self {
-                beneficiary: *ctx.accounts.wallet.key,
-                supply: initialSupply,
-                price: calc_price(initialSupply),
-                lost_authority: true
-            })
         }
 
-
-
-        pub fn change_authority(&mut self,
-            ctx: Context<ChangeAuthority>,) -> Result<(), ProgramError> {
+        pub fn change_authority_to_program(&mut self,
+            ctx: Context<ChangeAuthorityToProgram>,) -> Result<(), ProgramError> {
 
                 if ctx.accounts.wallet.key != &self.beneficiary {
                     return Err(ProgramError::Custom(2));
@@ -111,25 +132,36 @@ pub mod token_sale {
             ctx: Context<MintSomeTokens>,
             _mint_bump: u8,
             mint_authority_bump: u8,
+            token_count: u64,
         ) -> Result<(), ProgramError> {
-            msg!("Total supply = {}", ctx.accounts.mint.supply);
-            let ts = ctx.accounts.mint.supply;
-            let token_amount:u64 = calc_price(ts);
-            if ts >= 5000  {
+
+            if token_count == 0 || token_count > 10 {
                 return Err(ProgramError::Custom(1));
             }
 
+            if ctx.accounts.beneficiary.key != &self.beneficiary {
+                    return Err(ProgramError::Custom(2));
+            }
+            let ts = ctx.accounts.mint.supply;
+            if ts >= 10500  {
+                return Err(ProgramError::Custom(3));
+            }
+
+            let mut token_amount:f64 = calc_price(ts);
+            let token_amount2:f64 = calc_price(ts + token_count - 1);
+
+            if token_amount == token_amount2 {
+                token_amount = token_amount * token_count as f64;
+            } else {
+                token_amount = (token_count - ( (ts + token_count) % 10)) as f64 * token_amount + ((ts + token_count) % 10) as f64 * token_amount2;
+            }
             msg!("We are the beneficiary! {}", ctx.accounts.beneficiary.key);
             msg!("We are the beneficiary! {}", &self.beneficiary);
-
-            if ctx.accounts.beneficiary.key != &self.beneficiary {
-                return Err(ProgramError::Custom(2));
-            }
 
             let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
                 ctx.accounts.wallet.key,
                 ctx.accounts.beneficiary.key,
-                token_amount,
+                token_amount as u64,
             );
 
             msg!("transfering {} lamports from {} to {}", token_amount, ctx.accounts.wallet.key , ctx.accounts.beneficiary.key);
@@ -155,7 +187,7 @@ pub mod token_sale {
                     },
                     &[&[b"mint-authority".as_ref(), &[mint_authority_bump]]],
                 ),
-                1,
+                token_count,
             )?;
 
             ctx.accounts.mint.reload()?;
@@ -166,31 +198,37 @@ pub mod token_sale {
 
             msg!("new calculated price {} lamports", calc_price(self.supply));
             msg!("setting updated price {} lamports", self.price);
-
+            
             Ok(())
         }
     }
 }
 
-pub fn calc_price(supply: u64) -> u64 {
-    let fee:u64;
+pub fn calc_price(supply: u64) -> f64 {
+    let fee: f64;
     if supply < 500 {
-        fee = 0;
-    } else if supply < 510 {
-        fee = 1;
-    } else if supply < 515 {
-        fee = 2;
-    } else if supply < 520 {
-        fee = 3;
-    } else if supply < 525 {
-        fee = 4;
-    } else if supply < 530 {
-        fee = 5;
+        fee = 0.0;
+    } else if supply >=500 && supply < 750 {
+        fee = 1.0;
+    } else if supply >= 750 && supply < 1250 {
+        fee = 1.5;
+    } else if supply >= 1250 && supply < 3250 {
+        fee = 2.0;
+    } else if supply >= 3250 && supply < 5250 {
+        fee = 2.5;
+    } else if supply >= 5250 && supply < 8750 {
+        fee = 3.0;
+    } else if supply >= 8750 && supply < 10250 {
+        fee = 3.5;
+    } else if supply >= 10250 && supply < 10500 {
+        fee = 4.0;
     } else {
-        fee = 999999999;
+        fee = 999999.9;
     }
 
-    return fee * (10_00_00_00_00);
+
+   // return fee * (10_00_00_00_00);
+    return fee  * 1000000000.0
 
 }
 
@@ -205,6 +243,8 @@ pub struct Initialize<'info> {
 
     #[account(seeds = [b"mint-authority".as_ref()], bump = mint_authority_bump)]
     pub mint_authority: AccountInfo<'info>,
+
+    pub beneficiary: AccountInfo<'info>,
 
     #[account(init_if_needed, payer = wallet, associated_token::mint = mint, associated_token::authority = wallet)]
     pub destination: Account<'info, TokenAccount>,
@@ -240,9 +280,26 @@ pub struct MintSomeTokens<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ChangeAuthority<'info> {
+pub struct ChangeAuthorityToProgram<'info> {
 
 
     #[account(mut)]
     pub wallet: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(mint_bump: u8, mint_authority_bump: u8)]
+pub struct ChangeAuthorityToDeployer<'info> {
+
+    #[account(mut, seeds = [b"mint".as_ref()], bump = mint_bump)]
+    pub mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub wallet: Signer<'info>,
+
+    #[account(seeds = [b"mint-authority".as_ref()], bump = mint_authority_bump)]
+    pub mint_authority: AccountInfo<'info>,
+
+    pub token_program: Program<'info, Token>,
+
 }
